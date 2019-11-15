@@ -18,7 +18,9 @@ public class MapCreator : MonoBehaviour
     public static float BLOCK_HEIGHT = 0.2f;    // ブロックの高さ
     public static int BLOCK_NUM_IN_SCREEN = 24; // 画面内に収まるブロックの個数
 
+    private GameRoot game_root = null;
     private LevelControl level_control = null;
+    public TextAsset level_data_text = null;
 
     // ブロックに関する情報をまとめて管理するための構造体
     private struct FloorBlock
@@ -39,6 +41,10 @@ public class MapCreator : MonoBehaviour
 
         this.level_control = new LevelControl();
         this.level_control.initialize();
+        this.level_control.loadLevelData(this.level_data_text);
+
+        this.game_root = this.gameObject.GetComponent<GameRoot>();
+        this.player.level_control = this.level_control;
     }
 
     void Update()
@@ -81,7 +87,8 @@ public class MapCreator : MonoBehaviour
 
         // BlockCreatorスクリプトのcreateBlock()メソッドに作成指示！
 
-        this.level_control.update(); // LevelControlを更新
+        // this.level_control.update(); // LevelControlを更新
+        this.level_control.update(this.game_root.getPlayTime());
 
         // level_controlに置かれたcurrent_block（今作るブロックの情報）の
         // height（高さ）を、シーン上の座標に変換
