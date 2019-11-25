@@ -4,14 +4,59 @@ public class BlockRoot : MonoBehaviour
 {
     public GameObject BlockPrefab = null; // 作り出すべきブロックのPrefab
     public BlockControl[,] blocks; // マス目（グリッド）
+    private GameObject main_camera = null; // メインカメラ
+    private BlockControl grabbed_block = null; // つかんだブロック
 
     void Start()
     {
+        this.main_camera = GameObject.FindGameObjectWithTag("MainCamera");
     }
 
     // Update is called once per frame
     void Update()
     {
+        Vector3 mouse_position; // マウスの位置
+        this.unprojectMousePosition(out mouse_position, Input.mousePosition); // マウスの位置を取得
+
+        // 取得したマウスの位置をXとYだけにする
+        Vector2 mouse_position_xy = new Vector2(mouse_position.x, mouse_position.y);
+
+        if (this.grabbed_block == null) // ブロックをつかんでいないとき
+        {
+            //if (!this.is_has_falling_block())
+            //{
+            if (Input.GetMouseButtonDown(0)) // マウスボタンが押されたら
+            {
+                // blocks配列のすべての要素を順に処理する
+                foreach (BlockControl block in this.blocks)
+                {
+                    if (!block.isGrabbable()) // ブロックがつかめないなら
+                    {
+                        continue; // 次のブロックへ
+                    }
+                    // マウス位置がブロックの領域内にないなら
+                    if (!block.isContainedPosition(mouse_position_xy))
+                    {
+                        continue; // 次のブロックへ
+                    }
+
+                    // 処理中のブロックをgrabbled_blockに登録
+                    this.grabbed_block = block;
+                    // つかんだときの処理を実行
+                    this.grabbed_block.beginGrab();
+                    break;
+                }
+            }
+            //}
+        }
+        else // ブロックをつかんでいるとき
+        {
+            if (!Input.GetMouseButton(0)) // マウスボタンが押されていないなら
+            {
+                this.grabbed_block.endGrab(); // ブロックを話したときの処理を実行
+                this.grabbed_block = null; // grabbed_blockを空っぽに設定
+            }
+        }
     }
 
     // ブロックを作り出して、横9ます、縦9マスに配置
@@ -65,5 +110,34 @@ public class BlockRoot : MonoBehaviour
         position.y += (float)i_pos.y * Block.COLLISION_SIZE;
 
         return (position); // シーン上の座標を返す
+    }
+
+    public bool unprojectMousePosition(out Vector3 world_position, Vector3 mouse_position)
+    {
+        bool ret;
+
+        // 板を作成。この板はカメラから見える面が表で
+        // ブロックの半分のサイズ分、手前に置かれる
+        Plane plane = new Plane(Vector3.back, new Vector3(0.0f, 0.0f, -Block.COLLISION_SIZE / 2.0f));
+
+        // カメラとマウスを通る光線を作成
+        Ray ray = this.main_camera.GetComponent<Camera>().ScreenPointToRay(mouse_position);
+
+        float depth;
+
+        // 光線(ray)が板(plane)に当たっているなら
+        if (plane.Raycast(ray, out depth))
+        {
+            // 引数world_positionを、マウスの位置で上書き
+            world_position = ray.origin + ray.direction * depth;
+            ret = true;
+        }
+        else // 当たっていないなら
+        {
+            // 引数world_positionをゼロのベクターで上書き
+            world_position = Vector3.zero;
+            ret = false;
+        }
+        return (ret);
     }
 }
