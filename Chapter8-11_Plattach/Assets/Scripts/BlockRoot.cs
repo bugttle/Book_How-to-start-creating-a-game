@@ -51,6 +51,33 @@ public class BlockRoot : MonoBehaviour
         }
         else // ブロックをつかんでいるとき
         {
+            do
+            {
+                // スライドさせる先のブロックを取得
+                BlockControl swap_target = this.getNextBlock(grabbed_block, grabbed_block.slide_dir);
+                // スライド先にブロックがなかったら（グリッドの外へスライドさせようとしたら）
+                if (swap_target == null)
+                {
+                    break; // ループを脱出
+                }
+                // スライド先ブロックがつかめる状態にないなら
+                if (!swap_target.isGrabbable())
+                {
+                    break; // ループを脱出
+                }
+                // 現在位置からスライド先までの距離を取得
+                float offset = this.grabbed_block.calcDirOffset(mouse_position_xy, this.grabbed_block.slide_dir);
+                // 移動距離がブロックサイズの半分より小さいなら
+                if (offset < Block.COLLISION_SIZE / 2.0f)
+                {
+                    break; // ループを脱出
+                }
+                // ブロックを入れ替える
+                this.swapBlock(grabbed_block, grabbed_block.slide_dir, swap_target);
+
+                this.grabbed_block = null; // いまや、ブロックをつかんでいない
+            } while (false);
+
             if (!Input.GetMouseButton(0)) // マウスボタンが押されていないなら
             {
                 this.grabbed_block.endGrab(); // ブロックを話したときの処理を実行
@@ -139,5 +166,102 @@ public class BlockRoot : MonoBehaviour
             ret = false;
         }
         return (ret);
+    }
+
+    public BlockControl getNextBlock(BlockControl block, Block.DIR4 dir)
+    {
+        BlockControl next_block = null; // スライド先のブロックをここに格納
+
+        switch (dir)
+        {
+            case Block.DIR4.RIGHT:
+                if (block.i_pos.x < Block.BLOCK_NUM_X - 1) // グリッド内なら
+                {
+                    next_block = this.blocks[block.i_pos.x + 1, block.i_pos.y];
+                }
+                break;
+            case Block.DIR4.LEFT:
+                if (block.i_pos.x > 0) // グリッド内なら
+                {
+                    next_block = this.blocks[block.i_pos.x - 1, block.i_pos.y];
+                }
+                break;
+            case Block.DIR4.UP:
+                if (block.i_pos.y < Block.BLOCK_NUM_Y - 1) // グリッド内なら
+                {
+                    next_block = this.blocks[block.i_pos.x, block.i_pos.y + 1];
+                }
+                break;
+            case Block.DIR4.DOWN:
+                if (block.i_pos.y > 0) // グリッド内なら
+                {
+                    next_block = this.blocks[block.i_pos.x, block.i_pos.y - 1];
+                }
+                break;
+        }
+        return (next_block);
+    }
+
+    public static Vector3 getDirVector(Block.DIR4 dir)
+    {
+        Vector3 v = Vector3.zero;
+
+        switch (dir)
+        {
+            case Block.DIR4.RIGHT: v = Vector3.right; break; // 右に1単位ずらす
+            case Block.DIR4.LEFT: v = Vector3.left; break; // 左に1単位ずらす
+            case Block.DIR4.UP: v = Vector3.up; break; // 上に1単位ずらす
+            case Block.DIR4.DOWN: v = Vector3.down; break; // 下に1単位ずらす
+        }
+
+        v *= Block.COLLISION_SIZE; // ブロックのサイズを掛ける
+        return (v);
+    }
+
+    public static Block.DIR4 getOppositDir(Block.DIR4 dir)
+    {
+        Block.DIR4 opposit = dir;
+        switch (dir)
+        {
+            case Block.DIR4.RIGHT: opposit = Block.DIR4.LEFT; break;
+            case Block.DIR4.LEFT: opposit = Block.DIR4.RIGHT; break;
+            case Block.DIR4.UP: opposit = Block.DIR4.DOWN; break;
+            case Block.DIR4.DOWN: opposit = Block.DIR4.UP; break;
+        }
+        return (opposit);
+    }
+
+    public void swapBlock(BlockControl block0, Block.DIR4 dir, BlockControl block1)
+    {
+        // それぞれのブロックの色を覚えておく
+        Block.COLOR color0 = block0.color;
+        Block.COLOR color1 = block1.color;
+
+        // それぞれのブロックの拡大率を覚えておく
+        Vector3 scale0 = block0.transform.localScale;
+        Vector3 scale1 = block1.transform.localScale;
+
+        // それぞれのブロックの「消える時間」を覚えておく
+        float vanish_timer0 = block0.vanish_timer;
+        float vanish_timer1 = block1.vanish_timer;
+
+        // それぞれのブロックの移動先を求める
+        Vector3 offset0 = BlockRoot.getDirVector(dir);
+        Vector3 offset1 = BlockRoot.getDirVector(BlockRoot.getOppositDir(dir));
+
+        // 色を入れ替える
+        block0.setColor(color1);
+        block1.setColor(color0);
+
+        // 拡大率を入れ替える
+        block0.transform.localScale = scale1;
+        block1.transform.localScale = scale0;
+
+        // 「消える時間」を入れ替える
+        block0.vanish_timer = vanish_timer1;
+        block1.vanish_timer = vanish_timer0;
+
+        block0.beginSlide(offset0); // 元のブロックの移動を開始
+        block1.beginSlide(offset1); // 元のブロックの移動を開始
     }
 }

@@ -64,6 +64,9 @@ public class BlockControl : MonoBehaviour
     public Block.STEP next_step = Block.STEP.NONE; // 次の状態
     private Vector3 position_offset_initial = Vector3.zero; // 入れ替え前の位置
     private Vector3 position_offset = Vector3.zero; // 入れ替え後の位置　
+    public float vanish_timer = -1.0f; // ブロックが消えるまでの時間
+    public Block.DIR4 slide_dir = Block.DIR4.NONE; // スライドされた方向
+    public float step_timer = 0.0f; // ブロックが入れ替わったときの移動時間など
 
     void Start()
     {
@@ -78,6 +81,30 @@ public class BlockControl : MonoBehaviour
 
         // 取得したマウス位置をXとYだけにする
         Vector2 mouse_position_xy = new Vector2(mouse_position.x, mouse_position.y);
+
+        this.step_timer += Time.deltaTime;
+        float slide_time = 0.2f;
+
+        if (this.next_step == Block.STEP.NONE) // 「状態情報なし」の場合
+        {
+            switch (this.step)
+            {
+                case Block.STEP.SLIDE:
+                    if (this.step_timer >= slide_time)
+                    {
+                        // スライド中にブロックが消滅したら、VACANT(消える)状態に移行
+                        if (this.vanish_timer == 0.0f)
+                        {
+                            this.next_step = Block.STEP.VACANT;
+                        }
+                        else // vanish_timerが0でないなら、IDLE(待機)状態に移行
+                        {
+                            this.next_step = Block.STEP.IDLE;
+                        }
+                    }
+                    break;
+            }
+        }
 
         // 「次のブロック」の状態が「情報なし」以外である間
         // ＝「次のブロック」の状態が変更されていた場合
@@ -102,8 +129,28 @@ public class BlockControl : MonoBehaviour
                     // ブロックの表示サイズを通常サイズにする
                     this.transform.localScale = Vector3.one * 1.0f;
                     break;
+                case Block.STEP.VACANT:
+                    this.position_offset = Vector3.zero;
+                    break;
             }
+            this.step_timer = 0.0f;
         }
+
+        switch (this.step)
+        {
+            case Block.STEP.GRABBED: // 「つかまれた」状態
+                // 「つかまれた」状態のときは、常にスライド方向をチェック
+                this.slide_dir = this.calcSlideDir(mouse_position_xy);
+                break;
+            case Block.STEP.SLIDE: // スライド（入れ替え）中
+                // ブロックを徐々に移動する処理（難しいので今は分からなくても大丈夫です）
+                float rate = this.step_timer / slide_time;
+                rate = Mathf.Min(rate, 1.0f);
+                rate = Mathf.Sin(rate * Mathf.PI / 2.0f);
+                this.position_offset = Vector3.Lerp(this.position_offset_initial, Vector3.zero, rate);
+                break;
+        }
+
         // グリッド座標を実座標（シーン上の座標）に変換し、position_offsetを加える
         Vector3 position = BlockRoot.calcBlockPosition(this.i_pos) + this.position_offset;
 
@@ -189,5 +236,72 @@ public class BlockControl : MonoBehaviour
         } while (false);
 
         return (ret);
+    }
+
+    public Block.DIR4 calcSlideDir(Vector2 mouse_position)
+    {
+        Block.DIR4 dir = Block.DIR4.NONE;
+        // 指定されたmouse_positionと現在位置との差を示すベクトル
+        Vector2 v = mouse_position - new Vector2(this.transform.position.x, this.transform.position.y);
+
+        // ベクトルの大きさが0.1より大きいなら
+        // （それより小さい場合は、スライドしていないと見なす）
+        if (v.magnitude > 0.1f)
+        {
+            if (v.y > v.x)
+            {
+                if (v.y > -v.x)
+                {
+                    dir = Block.DIR4.UP;
+                }
+                else
+                {
+                    dir = Block.DIR4.LEFT;
+                }
+            }
+            else
+            {
+                if (v.y > -v.x)
+                {
+                    dir = Block.DIR4.RIGHT;
+                }
+                else
+                {
+                    dir = Block.DIR4.DOWN;
+                }
+            }
+        }
+        return (dir);
+    }
+
+    public float calcDirOffset(Vector2 position, Block.DIR4 dir)
+    {
+        float offset = 0.0f;
+        // 指定された位置と、ブロックの現在位置との差を表すベクトル　
+        Vector2 v = position - new Vector2(this.transform.position.x, this.transform.position.y);
+        switch (dir) // 指定された方向によって分岐
+        {
+            case Block.DIR4.RIGHT:
+                offset = v.x;
+                break;
+            case Block.DIR4.LEFT:
+                offset = -v.x;
+                break;
+            case Block.DIR4.UP:
+                offset = v.y;
+                break;
+            case Block.DIR4.DOWN:
+                offset = -v.y;
+                break;
+        }
+        return (offset);
+    }
+
+    public void beginSlide(Vector3 offset)
+    {
+        this.position_offset_initial = offset;
+        this.position_offset = this.position_offset_initial;
+        // 状態をSLIDEに変更
+        this.next_step = Block.STEP.SLIDE;
     }
 }
