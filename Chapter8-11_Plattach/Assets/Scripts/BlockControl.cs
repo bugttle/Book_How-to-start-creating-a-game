@@ -57,6 +57,9 @@ public class Block
 
 public class BlockControl : MonoBehaviour
 {
+    public Material opaque_material; // 不透明用のマテリアル
+    public Material transparent_material; // 半透明用のマテリアル
+
     public Block.COLOR color = (Block.COLOR)0; // ブロックの色
     public BlockRoot block_root = null; // ブロックの神様
     public Block.iPosition i_pos; // ブロックの座標
@@ -81,7 +84,22 @@ public class BlockControl : MonoBehaviour
 
         // 取得したマウス位置をXとYだけにする
         Vector2 mouse_position_xy = new Vector2(mouse_position.x, mouse_position.y);
-
+        if (this.vanish_timer >= 0.0f) // タイマーが0以上なら
+        {
+            this.vanish_timer -= Time.deltaTime; // タイマーの値を減らす
+            if (this.vanish_timer < 0.0f) // タイマーが0未満なら
+            {
+                if (this.step != Block.STEP.SLIDE) // スライド中でないなら
+                {
+                    this.vanish_timer = -1.0f;
+                    this.next_step = Block.STEP.VACANT; // 状態を「消滅中」に
+                }
+                else
+                {
+                    this.vanish_timer = 0.0f;
+                }
+            }
+        }
         this.step_timer += Time.deltaTime;
         float slide_time = 0.2f;
 
@@ -131,6 +149,7 @@ public class BlockControl : MonoBehaviour
                     break;
                 case Block.STEP.VACANT:
                     this.position_offset = Vector3.zero;
+                    this.setVisible(false); // ブロックを非表示に
                     break;
             }
             this.step_timer = 0.0f;
@@ -156,6 +175,28 @@ public class BlockControl : MonoBehaviour
 
         // 実際の位置を、新しい位置に変更
         this.transform.position = position;
+
+        this.setColor(this.color);
+
+        if (this.vanish_timer >= 0.0f)
+        {
+            Color color0 = Color.Lerp(this.GetComponent<Renderer>().material.color, Color.white, 0.5f); // 現在の色と白との中間色
+            Color color1 = Color.Lerp(this.GetComponent<Renderer>().material.color, Color.black, 0.5f); // 現在の色と黒との中間色
+
+            // 着火演出時間の半分を過ぎたら
+            if (this.vanish_timer < Block.VANISH_TIME / 2.0f)
+            {
+                // 透明度(a)を設定
+                color0.a = this.vanish_timer / (Block.VANISH_TIME / 2.0f);
+                color1.a = color0.a;
+                // 半透明マテリアルを適用
+                this.GetComponent<Renderer>().material = this.transparent_material;
+            }
+            // vanish_timerが減るほど1に近づく
+            float rate = 1.0f - this.vanish_timer / Block.VANISH_TIME;
+            // じわ～っと色を変える
+            this.GetComponent<Renderer>().material.color = Color.Lerp(color0, color1, rate);
+        }
     }
 
     // 引数colorの色で、ブロックを塗る
@@ -303,5 +344,48 @@ public class BlockControl : MonoBehaviour
         this.position_offset = this.position_offset_initial;
         // 状態をSLIDEに変更
         this.next_step = Block.STEP.SLIDE;
+    }
+
+    public void toVanishing()
+    {
+        // 「消えるまでの時間」を既定値にリセット
+        this.vanish_timer = Block.VANISH_TIME;
+    }
+
+    public bool isVanishing()
+    {
+        // vanish_timerが0より大きければtrue
+        bool is_vanishing = (this.vanish_timer > 0.0f);
+        return (is_vanishing);
+    }
+
+    public void rewindVanishTimer()
+    {
+        // 「消えるまでの時間」を既定値にリセット
+        this.vanish_timer = Block.VANISH_TIME;
+    }
+
+    public bool isVisible()
+    {
+        // 描画可能（renderer.enableがtrue）なら、表示されている
+        bool is_visible = this.GetComponent<Renderer>().enabled;
+        return (is_visible);
+    }
+
+    public void setVisible(bool is_visible)
+    {
+        // 「描画可能」設定に引数を代入
+        this.GetComponent<Renderer>().enabled = is_visible;
+    }
+
+    public bool isIdle()
+    {
+        bool is_idle = false;
+        // 現ブロックの状態が「大気中」で、次のブロックの状態が「なし」なら
+        if (this.step == Block.STEP.IDLE && this.next_step == Block.STEP.NONE)
+        {
+            is_idle = true;
+        }
+        return (is_idle);
     }
 }

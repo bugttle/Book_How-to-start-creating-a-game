@@ -84,6 +84,42 @@ public class BlockRoot : MonoBehaviour
                 this.grabbed_block = null; // grabbed_blockを空っぽに設定
             }
         }
+
+        // 落下中またはスライド中なら
+        if (this.is_has_falling_block() || this.is_has_sliding_block())
+        {
+            // 何もしない
+        }
+        else // 落下中でもスライド中でもないなら
+        {
+            int ignite_count = 0; // 着火数
+            foreach (BlockControl block in this.blocks)
+            {
+                if (!block.isIdle()) // 待機中でないならループの先頭にジャンプして
+                {
+                    continue; // 次のブロックを処理する
+                }
+                // 縦または横に同じ色のブロックが3つ以上並んでいるなら
+                if (this.checkConnection(block))
+                {
+                    ignite_count++; // 着火数をインクリメント
+                }
+            }
+
+            if (ignite_count > 0) // 着火数が0より大きいなら = 1箇所でも揃っているなら
+            {
+                int block_count = 0; // 着火中のブロック数（次章で使います）
+
+                // グリッドないの全てのブロックにつて処理
+                foreach (BlockControl block in this.blocks)
+                {
+                    if (block.isVanishing()) // 着火中（消えつつある）なら
+                    {
+                        block.rewindVanishTimer(); // 再着火！
+                    }
+                }
+            }
+        }
     }
 
     // ブロックを作り出して、横9ます、縦9マスに配置
@@ -263,5 +299,200 @@ public class BlockRoot : MonoBehaviour
 
         block0.beginSlide(offset0); // 元のブロックの移動を開始
         block1.beginSlide(offset1); // 元のブロックの移動を開始
+    }
+
+    public bool checkConnection(BlockControl start)
+    {
+        bool ret = false;
+        int normal_block_num = 0;
+
+        // 引数のブロックが着火後でないなら
+        if (!start.isVanishing())
+        {
+            normal_block_num = 1;
+        }
+
+        // グリッド座標を覚えておく
+        int rx = start.i_pos.x;
+        int lx = start.i_pos.x;
+
+        // ブロックの左側をチェック
+        for (int x = lx - lx; x > 0; x--)
+        {
+            BlockControl next_block = this.blocks[x, start.i_pos.y];
+            if (next_block.color != start.color) // 色が違ったら
+            {
+                break; // ループを脱出
+            }
+            if (next_block.step == Block.STEP.FALL || next_block.next_step == Block.STEP.FALL) // 落下中なら
+            {
+                break; // ループを脱出
+            }
+            if (next_block.step == Block.STEP.SLIDE || next_block.next_step == Block.STEP.SLIDE) // スライド中なら
+            {
+                break; // ループを脱出
+            }
+            if (!next_block.isVanishing()) // 着火中でなければ
+            {
+                normal_block_num++; // チェック用カウンターをインクリメント
+            }
+            lx = x;
+        }
+
+        // ブロックの右側をチェック
+        for (int x = rx + 1; x < Block.BLOCK_NUM_X; x++)
+        {
+            BlockControl next_block = this.blocks[x, start.i_pos.y];
+            if (next_block.color != start.color)
+            {
+                break;
+            }
+            if (next_block.step == Block.STEP.FALL || next_block.next_step == Block.STEP.FALL)
+            {
+                break;
+            }
+            if (next_block.step == Block.STEP.SLIDE || next_block.next_step == Block.STEP.SLIDE)
+            {
+                break;
+            }
+            if (!next_block.isVanishing())
+            {
+                normal_block_num++;
+            }
+            rx = x;
+        }
+
+        do
+        {
+            // 右端から左端までのブロックの数が３未満なら
+            if (rx - lx + 1 < 3)
+            {
+                break; // ループを脱出
+            }
+            if (normal_block_num == 0) // 着火中でないブロックが1つもないなら
+            {
+                break; // ループを脱出
+            }
+            for (int x = lx; x < rx + 1; x++)
+            {
+                // 揃っている同色ブロックを着火状態に
+                this.blocks[x, start.i_pos.y].toVanishing();
+                ret = true;
+            }
+        } while (false);
+
+        normal_block_num = 0;
+        if (!start.isVanishing())
+        {
+            normal_block_num = 1;
+        }
+        int uy = start.i_pos.y;
+        int dy = start.i_pos.y;
+
+        // ブロックの上側をチェック
+        for (int y = dy - 1; y > 0; y--)
+        {
+            BlockControl next_block = this.blocks[start.i_pos.x, y];
+            if (next_block.color != start.color)
+            {
+                break;
+            }
+            if (next_block.step == Block.STEP.FALL || next_block.next_step == Block.STEP.FALL)
+            {
+                break;
+            }
+            if (next_block.step == Block.STEP.SLIDE || next_block.next_step == Block.STEP.SLIDE)
+            {
+                break;
+            }
+            if (!next_block.isVanishing())
+            {
+                normal_block_num++;
+            }
+            dy = y;
+        }
+
+        // ブロックの下側をチェック
+        for (int y = uy + 1; y < Block.BLOCK_NUM_Y; y++)
+        {
+            BlockControl next_block = this.blocks[start.i_pos.x, y];
+            if (next_block.color != start.color)
+            {
+                break;
+            }
+            if (next_block.step == Block.STEP.FALL || next_block.next_step == Block.STEP.FALL)
+            {
+                break;
+            }
+            if (next_block.step == Block.STEP.SLIDE || next_block.next_step == Block.STEP.SLIDE)
+            {
+                break;
+            }
+            if (!next_block.isVanishing())
+            {
+                normal_block_num++;
+            }
+            uy = y;
+        }
+
+        do
+        {
+            if (uy - dy + 1 < 3)
+            {
+                break;
+            }
+            if (normal_block_num == 0)
+            {
+                break;
+            }
+            for (int y = dy; y < uy + 1; y++)
+            {
+                this.blocks[start.i_pos.x, y].toVanishing();
+                ret = true;
+            }
+        } while (false);
+        return (ret);
+    }
+
+    private bool is_has_vanishing_block()
+    {
+        bool ret = false;
+        foreach (BlockControl block in this.blocks)
+        {
+            if (block.vanish_timer > 0.0f)
+            {
+                ret = true;
+                break;
+            }
+        }
+        return (ret);
+    }
+
+    private bool is_has_sliding_block()
+    {
+        bool ret = false;
+        foreach (BlockControl block in this.blocks)
+        {
+            if (block.step == Block.STEP.SLIDE)
+            {
+                ret = true;
+                break;
+            }
+        }
+        return (ret);
+    }
+
+    private bool is_has_falling_block()
+    {
+        bool ret = false;
+        foreach (BlockControl block in this.blocks)
+        {
+            if (block.step == Block.STEP.FALL)
+            {
+                ret = true;
+                break;
+            }
+        }
+        return (ret);
     }
 }
