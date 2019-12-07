@@ -6,10 +6,13 @@ public class BlockRoot : MonoBehaviour
     public BlockControl[,] blocks; // マス目（グリッド）
     private GameObject main_camera = null; // メインカメラ
     private BlockControl grabbed_block = null; // つかんだブロック
+    private ScoreCounter score_counter = null; // ScoreCouner
+    protected bool is_vanishing_prev = false; // 前回は着火していたかどうか
 
     void Start()
     {
         this.main_camera = GameObject.FindGameObjectWithTag("MainCamera");
+        this.score_counter = this.gameObject.GetComponent<ScoreCounter>();
     }
 
     // Update is called once per frame
@@ -108,6 +111,16 @@ public class BlockRoot : MonoBehaviour
 
             if (ignite_count > 0) // 着火数が0より大きいなら = 1箇所でも揃っているなら
             {
+                if (!this.is_vanishing_prev)
+                {
+                    // 前回連鎖していなかったら、着火回数をリセット
+                    this.score_counter.clearIgniteCount();
+                }
+                // 着火回数を増やす
+                this.score_counter.addIgniteCount(ignite_count);
+                // 合計スコアを更新
+                this.score_counter.updateToScore();
+
                 int block_count = 0; // 着火中のブロック数（次章で使います）
 
                 // グリッドないの全てのブロックにつて処理
@@ -116,6 +129,7 @@ public class BlockRoot : MonoBehaviour
                     if (block.isVanishing()) // 着火中（消えつつある）なら
                     {
                         block.rewindVanishTimer(); // 再着火！
+                        block_count++; // 着火中ブロックの個数をインクリメント
                     }
                 }
             }
@@ -182,6 +196,7 @@ public class BlockRoot : MonoBehaviour
                 }
             }
         } while (false);
+        this.is_vanishing_prev = is_vanishing;
     }
 
     // ブロックを作り出して、横9ます、縦9マスに配置
