@@ -8,6 +8,8 @@ public class BlockRoot : MonoBehaviour
     private BlockControl grabbed_block = null; // つかんだブロック
     private ScoreCounter score_counter = null; // ScoreCouner
     protected bool is_vanishing_prev = false; // 前回は着火していたかどうか
+    public TextAsset levelData = null; // レベルデータのテキストを格納
+    public LevelControl level_control; // LevelControlを保持
 
     void Start()
     {
@@ -15,7 +17,43 @@ public class BlockRoot : MonoBehaviour
         this.score_counter = this.gameObject.GetComponent<ScoreCounter>();
     }
 
-    // Update is called once per frame
+    public void create()
+    {
+        this.level_control = new LevelControl();
+        this.level_control.initialize(); // レベルデータを初期化
+        this.level_control.loadLevelData(this.levelData); // データを読み込む
+        this.level_control.selectLevel(); // レベルを選択
+    }
+
+    public Block.COLOR selectBlockColor()
+    {
+        Block.COLOR color = Block.COLOR.FIRST;
+
+        // 今回のレベルのレベルデータを取得
+        LevelData level_data = this.level_control.getCurrentLevelData();
+
+        float rand = Random.Range(0.0f, 1.0f); // 0.0～1.0の間の乱数値
+        float sum = 0.0f; // 出現確率の合計
+        int i = 0;
+
+        // ブロックの種類全てを処理するループ
+        for (i = 0; i < level_data.probability.Length - 1; i++)
+        {
+            if (level_data.probability[i] == 0.0f)
+            {
+                continue; // 出現確率が0ならループの先頭にジャンプ
+            }
+            sum += level_data.probability[i]; // 出現確率を加算
+            if (rand < sum) // 合計が乱数値を上回ったら
+            {
+                break; // ループを抜ける
+            }
+        }
+
+        color = (Block.COLOR)i; // i番目の色を返す
+        return (color);
+    }
+
     void Update()
     {
         Vector3 mouse_position; // マウスの位置
@@ -206,6 +244,7 @@ public class BlockRoot : MonoBehaviour
         this.blocks = new BlockControl[Block.BLOCK_NUM_X, Block.BLOCK_NUM_Y];
         // ブロックの色番号
         int color_index = 0;
+        Block.COLOR color = Block.COLOR.FIRST;
 
         for (int y = 0; y < Block.BLOCK_NUM_Y; y++) // 先頭行から最終行まで
         {
@@ -228,8 +267,10 @@ public class BlockRoot : MonoBehaviour
                 Vector3 position = BlockRoot.calcBlockPosition(block.i_pos);
                 // シーン上のブロックの位置を移動
                 block.transform.position = position;
-                // ブロックの色を変更
-                block.setColor((Block.COLOR)color_index);
+
+                // 今の出現確率に基づいて色を決める
+                color = this.selectBlockColor();
+                block.setColor(color);
                 // ブロックの名前を設定（後述）
                 block.name = "block(" + block.i_pos.x.ToString() + "," + block.i_pos.y.ToString() + ")";
 

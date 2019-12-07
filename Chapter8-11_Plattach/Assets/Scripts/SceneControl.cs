@@ -23,6 +23,7 @@ public class SceneControl : MonoBehaviour
     {
         // BlockRootスクリプトを取得
         this.block_root = this.gameObject.GetComponent<BlockRoot>();
+        this.block_root.create();
         // BlockRootスクリプトのinitialSetUp()を呼び出す
         this.block_root.initialSetUp();
 

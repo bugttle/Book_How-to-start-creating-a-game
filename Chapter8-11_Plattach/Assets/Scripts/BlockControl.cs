@@ -219,6 +219,8 @@ public class BlockControl : MonoBehaviour
 
         if (this.vanish_timer >= 0.0f)
         {
+            // 現在のレベルの燃焼時間に設定
+            float vanish_time = this.block_root.level_control.getVanishTime();
             Color color0 = Color.Lerp(this.GetComponent<Renderer>().material.color, Color.white, 0.5f); // 現在の色と白との中間色
             Color color1 = Color.Lerp(this.GetComponent<Renderer>().material.color, Color.black, 0.5f); // 現在の色と黒との中間色
 
@@ -387,8 +389,9 @@ public class BlockControl : MonoBehaviour
 
     public void toVanishing()
     {
-        // 「消えるまでの時間」を既定値にリセット
-        this.vanish_timer = Block.VANISH_TIME;
+        // 現在のレベルの燃焼時間に設定
+        float vanish_time = this.block_root.level_control.getVanishTime();
+        this.vanish_timer = vanish_time;
     }
 
     public bool isVanishing()
@@ -400,8 +403,8 @@ public class BlockControl : MonoBehaviour
 
     public void rewindVanishTimer()
     {
-        // 「消えるまでの時間」を既定値にリセット
-        this.vanish_timer = Block.VANISH_TIME;
+        float vanish_time = this.block_root.level_control.getVanishTime();
+        this.vanish_timer = vanish_time;
     }
 
     public bool isVisible()
@@ -441,8 +444,9 @@ public class BlockControl : MonoBehaviour
         this.position_offset.y = (float)(start_ipos_y - this.i_pos.y) * Block.COLLISION_SIZE;
 
         this.next_step = Block.STEP.FALL;
-        int color_index = Random.Range((int)Block.COLOR.FIRST, (int)Block.COLOR.LAST + 1);
-        this.setColor((Block.COLOR)color_index);
+        // 現在のレベルの出現確率に基づいて、ブロックの色を決める
+        Block.COLOR color = this.block_root.selectBlockColor();
+        this.setColor(color);
     }
 
     public bool isVacant()
