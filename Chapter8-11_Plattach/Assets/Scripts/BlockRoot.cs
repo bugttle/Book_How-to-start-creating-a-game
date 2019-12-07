@@ -23,31 +23,31 @@ public class BlockRoot : MonoBehaviour
 
         if (this.grabbed_block == null) // ブロックをつかんでいないとき
         {
-            //if (!this.is_has_falling_block())
-            //{
-            if (Input.GetMouseButtonDown(0)) // マウスボタンが押されたら
+            if (!this.is_has_falling_block())
             {
-                // blocks配列のすべての要素を順に処理する
-                foreach (BlockControl block in this.blocks)
+                if (Input.GetMouseButtonDown(0)) // マウスボタンが押されたら
                 {
-                    if (!block.isGrabbable()) // ブロックがつかめないなら
+                    // blocks配列のすべての要素を順に処理する
+                    foreach (BlockControl block in this.blocks)
                     {
-                        continue; // 次のブロックへ
-                    }
-                    // マウス位置がブロックの領域内にないなら
-                    if (!block.isContainedPosition(mouse_position_xy))
-                    {
-                        continue; // 次のブロックへ
-                    }
+                        if (!block.isGrabbable()) // ブロックがつかめないなら
+                        {
+                            continue; // 次のブロックへ
+                        }
+                        // マウス位置がブロックの領域内にないなら
+                        if (!block.isContainedPosition(mouse_position_xy))
+                        {
+                            continue; // 次のブロックへ
+                        }
 
-                    // 処理中のブロックをgrabbled_blockに登録
-                    this.grabbed_block = block;
-                    // つかんだときの処理を実行
-                    this.grabbed_block.beginGrab();
-                    break;
+                        // 処理中のブロックをgrabbled_blockに登録
+                        this.grabbed_block = block;
+                        // つかんだときの処理を実行
+                        this.grabbed_block.beginGrab();
+                        break;
+                    }
                 }
             }
-            //}
         }
         else // ブロックをつかんでいるとき
         {
@@ -120,6 +120,68 @@ public class BlockRoot : MonoBehaviour
                 }
             }
         }
+
+        // 1つでも燃焼中のブロックが有る
+        bool is_vanishing = this.is_has_vanishing_block();
+        // 条件が満たされていたらブロックを落としたい
+        do
+        {
+            if (is_vanishing) // 燃焼中のブロックがあるなら
+            {
+                break; // 落下処理は行わない
+            }
+
+            if (this.is_has_sliding_block()) // 入れ替え中のブロックがあるなら
+            {
+                break; // 落下処理は行わない
+            }
+
+            for (int x = 0; x < Block.BLOCK_NUM_X; x++)
+            {
+                // 列に入れ替え中のブロックがあったらその列は処理せず、次に進む
+                if (this.is_has_sliding_block_in_column(x))
+                {
+                    continue;
+                }
+                // その列にあるブロックを上からチェック
+                for (int y = 0; y < Block.BLOCK_NUM_Y - 1; y++)
+                {
+                    // 指定中のブロックが非表示なら、次のブロックへ
+                    if (!this.blocks[x, y].isVacant())
+                    {
+                        continue;
+                    }
+                    // 指定中ブロックの下にあるブロックをチェック
+                    for (int y1 = y + 1; y1 < Block.BLOCK_NUM_Y; y1++)
+                    {
+                        // 下にあるブロックが非表示なら、次のブロックへ
+                        if (this.blocks[x, y1].isVacant())
+                        {
+                            continue;
+                        }
+                        // ブロックを入れ替える
+                        this.fallBlock(this.blocks[x, y], Block.DIR4.UP, this.blocks[x, y1]);
+                        break;
+                    }
+                }
+            }
+
+            // 補充処理
+            for (int x = 0; x < Block.BLOCK_NUM_X; x++)
+            {
+                int fall_start_y = Block.BLOCK_NUM_Y;
+                for (int y = 0; y < Block.BLOCK_NUM_Y; y++)
+                {
+                    // 非表示ブロックでなかったら、次のブロックへ
+                    if (!this.blocks[x, y].isVacant())
+                    {
+                        continue;
+                    }
+                    this.blocks[x, y].beginRespawn(fall_start_y); // ブロック復活
+                    fall_start_y++;
+                }
+            }
+        } while (false);
     }
 
     // ブロックを作り出して、横9ます、縦9マスに配置
@@ -490,6 +552,48 @@ public class BlockRoot : MonoBehaviour
             if (block.step == Block.STEP.FALL)
             {
                 ret = true;
+                break;
+            }
+        }
+        return (ret);
+    }
+
+    public void fallBlock(BlockControl block0, Block.DIR4 dir, BlockControl block1)
+    {
+        // block0とblock1の色、サイズ、消えるまでの時間、表示・非表示、状態を記録
+        Block.COLOR color0 = block0.color;
+        Block.COLOR color1 = block1.color;
+        Vector3 scale0 = block0.transform.localScale;
+        Vector3 scale1 = block1.transform.localScale;
+        float vanish_timer0 = block0.vanish_timer;
+        float vanish_timer1 = block1.vanish_timer;
+        bool visible0 = block0.isVisible();
+        bool visible1 = block1.isVisible();
+        Block.STEP step0 = block0.step;
+        Block.STEP step1 = block1.step;
+
+        //
+        block0.setColor(color1);
+        block1.setColor(color0);
+        block0.transform.localScale = scale1;
+        block1.transform.localScale = scale0;
+        block0.vanish_timer = vanish_timer1;
+        block1.vanish_timer = vanish_timer0;
+        block0.setVisible(visible1);
+        block1.setVisible(visible0);
+        block0.step = step1;
+        block1.step = step0;
+        block0.beginFall(block1);
+    }
+
+    private bool is_has_sliding_block_in_column(int x)
+    {
+        bool ret = false;
+        for (int y = 0; y < Block.BLOCK_NUM_Y; y++)
+        {
+            if (this.blocks[x, y].isSliding()) // スライド中のブロックがあればm
+            {
+                ret = true; // trueを返す
                 break;
             }
         }

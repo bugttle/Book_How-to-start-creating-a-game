@@ -71,6 +71,13 @@ public class BlockControl : MonoBehaviour
     public Block.DIR4 slide_dir = Block.DIR4.NONE; // スライドされた方向
     public float step_timer = 0.0f; // ブロックが入れ替わったときの移動時間など
 
+    private struct StepFall
+    {
+        public float velocity; // 落下速度
+    }
+
+    private StepFall fall;
+
     void Start()
     {
         this.setColor(this.color); // 色塗りを行う
@@ -121,6 +128,18 @@ public class BlockControl : MonoBehaviour
                         }
                     }
                     break;
+
+                case Block.STEP.IDLE:
+                    this.GetComponent<Renderer>().enabled = true;
+                    break;
+
+                case Block.STEP.FALL:
+                    if (this.position_offset.y <= 0.0f)
+                    {
+                        this.next_step = Block.STEP.IDLE;
+                        this.position_offset.y = 0.0f;
+                    }
+                    break;
             }
         }
 
@@ -151,6 +170,16 @@ public class BlockControl : MonoBehaviour
                     this.position_offset = Vector3.zero;
                     this.setVisible(false); // ブロックを非表示に
                     break;
+                case Block.STEP.RESPAWN:
+                    // 色をランダムに選び、ブロックをその色に設定
+                    int color_index = Random.Range(0, (int)Block.COLOR.NORMAL_COLOR_NUM);
+                    this.setColor((Block.COLOR)color_index);
+                    this.next_step = Block.STEP.IDLE;
+                    break;
+                case Block.STEP.FALL:
+                    this.setVisible(true); // ブロックを表示
+                    this.fall.velocity = 0.0f; // 落下速度をリセット
+                    break;
             }
             this.step_timer = 0.0f;
         }
@@ -167,6 +196,16 @@ public class BlockControl : MonoBehaviour
                 rate = Mathf.Min(rate, 1.0f);
                 rate = Mathf.Sin(rate * Mathf.PI / 2.0f);
                 this.position_offset = Vector3.Lerp(this.position_offset_initial, Vector3.zero, rate);
+                break;
+            case Block.STEP.FALL:
+                // 速度に、重力の影響を与える
+                this.fall.velocity += Physics.gravity.y * Time.deltaTime * 0.3f;
+                // 縦方向の位置を計算
+                this.position_offset.y += this.fall.velocity * Time.deltaTime;
+                if (this.position_offset.y < 0.0f) // 落下しきったら
+                {
+                    this.position_offset.y = 0.0f; // その場に留める
+                }
                 break;
         }
 
@@ -387,5 +426,38 @@ public class BlockControl : MonoBehaviour
             is_idle = true;
         }
         return (is_idle);
+    }
+
+    public void beginFall(BlockControl start)
+    {
+        this.next_step = Block.STEP.FALL;
+        // 指定されたブロックから座標を割り出す
+        this.position_offset.y = (float)(start.i_pos.y - this.i_pos.y) * Block.COLLISION_SIZE;
+    }
+
+    public void beginRespawn(int start_ipos_y)
+    {
+        // 指定位置までy座標を移動
+        this.position_offset.y = (float)(start_ipos_y - this.i_pos.y) * Block.COLLISION_SIZE;
+
+        this.next_step = Block.STEP.FALL;
+        int color_index = Random.Range((int)Block.COLOR.FIRST, (int)Block.COLOR.LAST + 1);
+        this.setColor((Block.COLOR)color_index);
+    }
+
+    public bool isVacant()
+    {
+        bool is_vacant = false;
+        if (this.step == Block.STEP.VACANT && this.next_step == Block.STEP.NONE)
+        {
+            is_vacant = true;
+        }
+        return (is_vacant);
+    }
+
+    public bool isSliding()
+    {
+        bool is_sliding = (this.position_offset.x != 0.0f);
+        return (is_sliding);
     }
 }
