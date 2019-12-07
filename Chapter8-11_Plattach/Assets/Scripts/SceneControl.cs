@@ -36,6 +36,15 @@ public class SceneControl : MonoBehaviour
     void Update()
     {
         this.step_timer += Time.deltaTime;
+        switch (this.step)
+        {
+            case STEP.CLEAR:
+                if (Input.GetMouseButtonDown(0))
+                {
+                    Application.LoadLevel("TitleScene");
+                }
+                break;
+        }
 
         // 状態変化待ち-----
         if (this.next_step == STEP.NONE)
