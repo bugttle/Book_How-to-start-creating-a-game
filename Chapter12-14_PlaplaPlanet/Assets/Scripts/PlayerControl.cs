@@ -11,6 +11,7 @@ public class PlayerControl : MonoBehaviour
     private GameObject closest_event = null; // 注目しているイベントを格納
     private EventRoot event_root = null; // EventRootクラスを使うための変数
     private GameObject rocket_model = null; // 宇宙船のモデルを使うための変数
+    private GameStatus game_status = null;
 
     private struct Key // キー操作情報の構造体
     {
@@ -46,6 +47,8 @@ public class PlayerControl : MonoBehaviour
         this.event_root = GameObject.Find("GameRoot").GetComponent<EventRoot>();
 
         this.rocket_model = GameObject.Find("rocket").transform.FindChild("rocket_model").gameObject;
+
+        this.game_status = GameObject.Find("GameRoot").GetComponent<GameStatus>();
     }
 
     private void get_input()
@@ -160,6 +163,8 @@ public class PlayerControl : MonoBehaviour
                 case STEP.EATING: // 「食事中」状態の処理
                     if (this.carried_item != null)
                     {
+                        // 持っているアイテムの「お腹の回復具合」を取得し、設定
+                        this.game_status.addSatiety(this.item_root.getRegainSatiety(this.carried_item));
                         // 持っていたアイテムを破棄
                         GameObject.Destroy(this.carried_item);
                         this.carried_item = null;
@@ -168,6 +173,8 @@ public class PlayerControl : MonoBehaviour
                 case STEP.REPAIRING: // 「修理中」になったら
                     if (this.carried_item != null)
                     {
+                        // 持っているアイテムの「お腹の回復具合」を取得し、設定
+                        this.game_status.addRepairment(this.item_root.getGainRepairment(this.carried_item));
                         // 持っているアイテムを削除
                         GameObject.Destroy(this.carried_item);
                         this.carried_item = null;
@@ -242,6 +249,13 @@ public class PlayerControl : MonoBehaviour
             // キャラクターの向きをじわっと変えるs
             Quaternion q = Quaternion.LookRotation(move_vector, Vector3.up);
             this.transform.rotation = Quaternion.Lerp(this.transform.rotation, q, 0.1f);
+        }
+        if (is_moved)
+        {
+            // 持っているアイテムに応じた「お腹の減り具合」を取得
+            float consume = this.item_root.getConsumeSatiety(this.carried_item);
+            // 満腹度から、取得した「減り具合」を引く
+            this.game_status.addSatiety(-consume * Time.deltaTime);
         }
     }
 

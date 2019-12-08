@@ -143,4 +143,69 @@ public class ItemRoot : MonoBehaviour
             this.respawnPlant(); // 植物を出現させる
         }
     }
+
+    public float getGainRepairment(GameObject item_go)
+    {
+        float gain = 0.0f;
+        if (item_go == null)
+        {
+            gain = 0.0f;
+        }
+        else
+        {
+            Item.TYPE type = this.getItemType(item_go);
+            switch (type) // 持っているアイテムの種類で分岐
+            {
+                case Item.TYPE.IRON:
+                    gain = GameStatus.GAIN_REPAIRMENT_IRON; break;
+                case Item.TYPE.PLANT:
+                    gain = GameStatus.GAIN_REPAIRMENT_PLANT; break;
+            }
+        }
+        return (gain);
+    }
+
+    public float getConsumeSatiety(GameObject item_go)
+    {
+        float consume = 0.0f;
+        if (item_go == null)
+        {
+            consume = 0.0f;
+        }
+        else
+        {
+            Item.TYPE type = this.getItemType(item_go);
+            switch (type) // 持っているアイテムの種類で分岐
+            {
+                case Item.TYPE.IRON:
+                    consume = GameStatus.CONSUME_SATIETY_IRON; break;
+                case Item.TYPE.APPLE:
+                    consume = GameStatus.CONSUME_SATIETY_APPLE; break;
+                case Item.TYPE.PLANT:
+                    consume = GameStatus.CONSUME_SATIETY_PLANT; break;
+            }
+        }
+        return (consume);
+    }
+
+    public float getRegainSatiety(GameObject item_go)
+    {
+        float regain = 0.0f;
+        if (item_go == null)
+        {
+            regain = 0.0f;
+        }
+        else
+        {
+            Item.TYPE type = this.getItemType(item_go);
+            switch (type) // 持っているアイテムの種類で分岐
+            {
+                case Item.TYPE.APPLE:
+                    regain = GameStatus.REGAIN_SATIETY_APPLE; break;
+                case Item.TYPE.PLANT:
+                    regain = GameStatus.REGAIN_SATIETY_PLANT; break;
+            }
+        }
+        return (regain);
+    }
 }
