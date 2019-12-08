@@ -50,4 +50,23 @@ public class GameStatus : MonoBehaviour
     {
         this.satiety = Mathf.Clamp01(this.satiety + add);
     }
+
+    public bool isGameClear()
+    {
+        bool is_clear = false;
+        if (this.repairment >= 1.0f) // 修理具合が100%以上なら
+        {
+            is_clear = true; // クリアしている
+        }
+        return (is_clear);
+    }
+    public bool isGameOver()
+    {
+        bool is_over = false;
+        if (this.satiety <= 0.0f) // 満腹度が0以下なら
+        {
+            is_over = true; // ゲームオーバー
+        }
+        return (is_over);
+    }
 }

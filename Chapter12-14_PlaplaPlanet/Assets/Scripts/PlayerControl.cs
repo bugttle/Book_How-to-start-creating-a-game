@@ -3,7 +3,7 @@
 public class PlayerControl : MonoBehaviour
 {
     public static float MOVE_AREA_RADIUS = 15.0f; // 島の半径
-    public static float MOVE_SPEED = 5.0f; // 移動速度
+    public static float MOVE_SPEED = 7.0f; // 移動速度
     private GameObject closest_item = null; // プレイヤーの正面にあるGameObject
     private GameObject carried_item = null; // プレイヤーが持ち上げたGameObject
     private ItemRoot item_root = null; // ItemRootスクリプトを保持
@@ -84,8 +84,8 @@ public class PlayerControl : MonoBehaviour
     {
         this.get_input(); // 入力情報を取得
         this.step_timer += Time.deltaTime;
-        float eat_time = 2.0f; // リンゴは、2秒かけて食べる
-        float repair_time = 2.0f; // 修理にかかる時間も2秒
+        float eat_time = 0.5f; // リンゴは、2秒かけて食べる
+        float repair_time = 0.5f; // 修理にかかる時間も2秒
 
         // 状態を変化させる---------------------
         if (this.next_step == STEP.NONE) // 次の予定がないなら
@@ -248,7 +248,7 @@ public class PlayerControl : MonoBehaviour
         {
             // キャラクターの向きをじわっと変えるs
             Quaternion q = Quaternion.LookRotation(move_vector, Vector3.up);
-            this.transform.rotation = Quaternion.Lerp(this.transform.rotation, q, 0.1f);
+            this.transform.rotation = Quaternion.Lerp(this.transform.rotation, q, 0.2f);
         }
         if (is_moved)
         {
