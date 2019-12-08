@@ -73,6 +73,46 @@ public class PlayerControl : MonoBehaviour
     void Update()
     {
         this.get_input(); // 入力情報を取得
+        this.step_timer += Time.deltaTime;
+        float eat_time = 2.0f; // リンゴは、2秒かけて食べる
+
+        // 状態を変化させる---------------------
+        if (this.next_step == STEP.NONE) // 次の予定がないなら
+        {
+            switch (this.step)
+            {
+                case STEP.MOVE: // 「移動中」状態の処理
+                    do
+                    {
+                        if (!this.key.action) // アクションキーが押されていない
+                        {
+                            break; // ループを脱出
+                        }
+                        if (this.carried_item != null)
+                        {
+                            // 持っているアイテムを判別
+                            Item.TYPE carried_item_type = this.item_root.getItemType(this.carried_item);
+
+                            switch (carried_item_type)
+                            {
+                                case Item.TYPE.APPLE: // リンゴなら
+                                case Item.TYPE.PLANT: // 植物なら
+                                    // 「食事中」状態に移行
+                                    this.next_step = STEP.EATING;
+                                    break;
+                            }
+                        }
+                    } while (false);
+                    break;
+
+                case STEP.EATING: // 「食事中」状態の処理
+                    if (this.step_timer > eat_time) // 2秒待つ
+                    {
+                        this.next_step = STEP.MOVE; // 「移動」状態に移行
+                    }
+                    break;
+            }
+        }
 
         // 状態が変化した場合------------
         while (this.next_step != STEP.NONE) // 状態がNONE以外＝状態が変化した
@@ -82,6 +122,14 @@ public class PlayerControl : MonoBehaviour
             switch (this.step)
             {
                 case STEP.MOVE:
+                    break;
+                case STEP.EATING: // 「食事中」状態の処理
+                    if (this.carried_item != null)
+                    {
+                        // 持っていたアイテムを破棄
+                        GameObject.Destroy(this.carried_item);
+                        this.carried_item = null;
+                    }
                     break;
             }
             this.step_timer = 0.0f;
@@ -191,6 +239,7 @@ public class PlayerControl : MonoBehaviour
         if (this.carried_item != null)
         {
             GUI.Label(new Rect(x, y, 200.0f, 20.0f), "Z:すてる", guistyle);
+            GUI.Label(new Rect(x + 100.0f, y, 200.0f, 20.0f), "X:たべる", guistyle);
         }
         else
         {
@@ -199,6 +248,13 @@ public class PlayerControl : MonoBehaviour
             {
                 GUI.Label(new Rect(x, y, 200.0f, 20.0f), "Z:拾う", guistyle);
             }
+        }
+
+        switch (this.step)
+        {
+            case STEP.EATING:
+                GUI.Label(new Rect(x, y, 200.0f, 20.0f), "むしゃむしゃもぐもぐ……", guistyle);
+                break;
         }
     }
 
