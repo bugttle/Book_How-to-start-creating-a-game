@@ -8,6 +8,9 @@ public class PlayerControl : MonoBehaviour
     private GameObject carried_item = null; // プレイヤーが持ち上げたGameObject
     private ItemRoot item_root = null; // ItemRootスクリプトを保持
     public GUIStyle guistyle; // フォントスタイル
+    private GameObject closest_event = null; // 注目しているイベントを格納
+    private EventRoot event_root = null; // EventRootクラスを使うための変数
+    private GameObject rocket_model = null; // 宇宙船のモデルを使うための変数
 
     private struct Key // キー操作情報の構造体
     {
@@ -39,6 +42,10 @@ public class PlayerControl : MonoBehaviour
         this.item_root = GameObject.Find("GameRoot").GetComponent<ItemRoot>();
 
         this.guistyle.fontSize = 16;
+
+        this.event_root = GameObject.Find("GameRoot").GetComponent<EventRoot>();
+
+        this.rocket_model = GameObject.Find("rocket").transform.FindChild("rocket_model").gameObject;
     }
 
     private void get_input()
@@ -75,6 +82,7 @@ public class PlayerControl : MonoBehaviour
         this.get_input(); // 入力情報を取得
         this.step_timer += Time.deltaTime;
         float eat_time = 2.0f; // リンゴは、2秒かけて食べる
+        float repair_time = 2.0f; // 修理にかかる時間も2秒
 
         // 状態を変化させる---------------------
         if (this.next_step == STEP.NONE) // 次の予定がないなら
@@ -87,6 +95,26 @@ public class PlayerControl : MonoBehaviour
                         if (!this.key.action) // アクションキーが押されていない
                         {
                             break; // ループを脱出
+                        }
+                        // 注目中のイベントがある場合
+                        if (this.closest_event != null)
+                        {
+                            if (!this.is_event_ignitable()) // イベントが開始不可なら
+                            {
+                                break; // 何もしない
+                            }
+                            // イベントの種類を取得
+                            Event.TYPE ignitable_event = this.event_root.getEventType(this.closest_event);
+
+                            switch (ignitable_event)
+                            {
+                                case Event.TYPE.ROCKET:
+                                    // イベントの種類がROCKETなら
+                                    // REPAIRING（種類）状態に移行
+                                    this.next_step = STEP.REPAIRING;
+                                    break;
+                            }
+                            break;
                         }
                         if (this.carried_item != null)
                         {
@@ -111,6 +139,12 @@ public class PlayerControl : MonoBehaviour
                         this.next_step = STEP.MOVE; // 「移動」状態に移行
                     }
                     break;
+                case STEP.REPAIRING: // 「修理中」状態の処理
+                    if (this.step_timer > repair_time) // 2秒待つ
+                    {
+                        this.next_step = STEP.MOVE; // 「移動」状態に移行
+                    }
+                    break;
             }
         }
 
@@ -131,6 +165,15 @@ public class PlayerControl : MonoBehaviour
                         this.carried_item = null;
                     }
                     break;
+                case STEP.REPAIRING: // 「修理中」になったら
+                    if (this.carried_item != null)
+                    {
+                        // 持っているアイテムを削除
+                        GameObject.Destroy(this.carried_item);
+                        this.carried_item = null;
+                        this.closest_item = null;
+                    }
+                    break;
             }
             this.step_timer = 0.0f;
         }
@@ -141,6 +184,10 @@ public class PlayerControl : MonoBehaviour
             case STEP.MOVE:
                 this.move_control();
                 this.pick_or_drop_control();
+                break;
+            case STEP.REPAIRING:
+                // 宇宙船を回転させる
+                this.rocket_model.transform.localRotation *= Quaternion.AngleAxis(360.0f / 10.0f * Time.deltaTime, Vector3.up);
                 break;
         }
     }
@@ -221,7 +268,26 @@ public class PlayerControl : MonoBehaviour
                 }
             }
         }
+        else if (other_go.layer == LayerMask.NameToLayer("Event")) // トリガーのGameObjectのレイヤー設定がEventなら
+        {
+            // 何にも注目していないなら
+            if (this.closest_event == null)
+            {
+                if (this.is_other_in_view(other_go)) // 正面にあるなら
+                {
+                    this.closest_event = other_go; // 注目する
+                }
+            }
+            else if (this.closest_event == other_go) // 何かに注目しているなら
+            {
+                if (!this.is_other_in_view(other_go)) // 正面にないなら
+                {
+                    this.closest_event = null; // 注目をやめる
+                }
+            }
+        }
     }
+
     void OnTriggerExit(Collider other)
     {
         if (this.closest_item == other.gameObject)
@@ -239,7 +305,18 @@ public class PlayerControl : MonoBehaviour
         if (this.carried_item != null)
         {
             GUI.Label(new Rect(x, y, 200.0f, 20.0f), "Z:すてる", guistyle);
-            GUI.Label(new Rect(x + 100.0f, y, 200.0f, 20.0f), "X:たべる", guistyle);
+            do
+            {
+                if (this.is_event_ignitable())
+                {
+                    break;
+                }
+                if (item_root.getItemType(this.carried_item) == Item.TYPE.IRON)
+                {
+                    break;
+                }
+                GUI.Label(new Rect(x + 100.0f, y, 200.0f, 20.0f), "X:たべる", guistyle);
+            } while (false);
         }
         else
         {
@@ -255,6 +332,16 @@ public class PlayerControl : MonoBehaviour
             case STEP.EATING:
                 GUI.Label(new Rect(x, y, 200.0f, 20.0f), "むしゃむしゃもぐもぐ……", guistyle);
                 break;
+            case STEP.REPAIRING:
+                GUI.Label(new Rect(x + 200.0f, y, 200.0f, 20.0f), "修理中", guistyle);
+                break;
+        }
+
+        if (this.is_event_ignitable()) // イベントが開始可能なら場合
+        {
+            // イベント用メッセージを取得
+            string message = this.event_root.getIgnitableMessage(this.closest_event);
+            GUI.Label(new Rect(x + 200.0f, y, 200.0f, 20.0f), "X:" + message, guistyle);
         }
     }
 
@@ -309,6 +396,31 @@ public class PlayerControl : MonoBehaviour
                 break; // ループを抜ける
             }
             ret = true; // 内積が45度のコサイン以上なら、正面にある
+        } while (false);
+        return (ret);
+    }
+
+    private bool is_event_ignitable()
+    {
+        bool ret = false;
+        do
+        {
+            if (this.closest_event == null) // 注目イベントがなければ
+            {
+                break; // falseを返す
+            }
+
+            // 持ち上げているアイテムの種類を取得
+            Item.TYPE carried_item_type = this.item_root.getItemType(this.carried_item);
+
+            // 持ち上げているアイテムの種類と、注目しているイベントの種類から
+            // イベント可能化どうかを判定し、イベント不可ならfalseを返す
+            if (!this.event_root.isEventIgnitable(carried_item_type, this.closest_event))
+            {
+                break;
+            }
+
+            ret = true; // ここまで来たらイベントを開始できると判定！
         } while (false);
         return (ret);
     }
