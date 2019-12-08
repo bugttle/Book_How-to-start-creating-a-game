@@ -10,6 +10,7 @@ public class GameStatus : MonoBehaviour
     public static float CONSUME_SATIETY_IRON = 0.15f;
     public static float CONSUME_SATIETY_APPLE = 0.1f;
     public static float CONSUME_SATIETY_PLANT = 0.1f;
+    public static float CONSUME_SATIETY_ALWAYS = 0.03f;
 
     // リンゴ、植物のそれぞれを食べたときに回復するお腹具合
     public static float REGAIN_SATIETY_APPLE = 0.7f;
@@ -68,5 +69,10 @@ public class GameStatus : MonoBehaviour
             is_over = true; // ゲームオーバー
         }
         return (is_over);
+    }
+
+    public void alwaysSatiety()
+    {
+        this.satiety = Mathf.Clamp01(this.satiety - CONSUME_SATIETY_ALWAYS * Time.deltaTime);
     }
 }

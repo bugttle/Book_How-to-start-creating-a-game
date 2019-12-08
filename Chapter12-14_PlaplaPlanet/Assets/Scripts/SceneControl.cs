@@ -4,6 +4,7 @@ public class SceneControl : MonoBehaviour
 {
     private GameStatus game_status = null;
     private PlayerControl player_control = null;
+    private float GAME_OVER_TIME = 60.0f; // 制限時間は60秒
 
     public enum STEP // ゲームステータス
     {
@@ -45,6 +46,11 @@ public class SceneControl : MonoBehaviour
                     if (this.game_status.isGameOver())
                     {
                         // ゲームオーバー状態に移行
+                        this.next_step = STEP.GAMEOVER;
+                    }
+                    if (this.step_timer > GAME_OVER_TIME)
+                    {
+                        // 制限時間を超えていたらゲームオーバー
                         this.next_step = STEP.GAMEOVER;
                     }
                     break;
@@ -91,11 +97,33 @@ public class SceneControl : MonoBehaviour
             case STEP.PLAY:
                 GUI.color = Color.black;
                 GUI.Label(new Rect(pos_x, pos_y, 200, 20), this.step_timer.ToString("0.00"), guistyle); // 経過時間を表示
+
+                // 制限時間に達するまでの残り時間を表示
+                float blast_time = GAME_OVER_TIME - this.step_timer;
+                GUI.Label(new Rect(pos_x, pos_y + 64, 200, 20), blast_time.ToString("0.00"));
                 break;
             case STEP.CLEAR:
                 GUI.color = Color.black;
                 // クリアメッセージとクリア時間を表示
                 GUI.Label(new Rect(pos_x, pos_y, 200, 20), "脱出" + this.clear_time.ToString("0.00"), guistyle); // 経過時間を表示
+                pos_y -= 32;
+                int ct = (int)clear_time; // クリア時間（float）をintに変換
+                if (ct > 50) // 50秒～制限時間内
+                {
+                    GUI.Label(new Rect(pos_y, pos_y, 200, 20), "ぎりぎり脱出！ 50秒以内を目指そう！");
+                }
+                else if (ct > 40) // 40秒～50秒
+                {
+                    GUI.Label(new Rect(pos_y, pos_y, 200, 20), "素敵！40秒以内を目指そう！");
+                }
+                else if (ct > 30) // 30秒～40秒
+                {
+                    GUI.Label(new Rect(pos_y, pos_y, 200, 20), "凄い！30秒以内を目指そう！");
+                }
+                else // 30秒以内！
+                {
+                    GUI.Label(new Rect(pos_y, pos_y, 200, 20), "早い！ぷらぷらマスター！");
+                }
                 break;
             case STEP.GAMEOVER:
                 GUI.color = Color.black;

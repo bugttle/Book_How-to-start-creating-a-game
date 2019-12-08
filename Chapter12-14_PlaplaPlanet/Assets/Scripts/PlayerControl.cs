@@ -191,6 +191,8 @@ public class PlayerControl : MonoBehaviour
             case STEP.MOVE:
                 this.move_control();
                 this.pick_or_drop_control();
+                // 移動可能な場合は常にお腹が減る
+                this.game_status.alwaysSatiety();
                 break;
             case STEP.REPAIRING:
                 // 宇宙船を回転させる
