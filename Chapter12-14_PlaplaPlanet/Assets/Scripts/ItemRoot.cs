@@ -118,7 +118,9 @@ public class ItemRoot : MonoBehaviour
         ironrespawn.GetComponent<MeshRenderer>().enabled = false;
 
         this.respawnIron(); // 鉄鉱石を1つ作成
-        this.respawnPlant(); // 植物を1つ作成
+        this.respawnPlant(); // 植物を3つ作成
+        this.respawnPlant();
+        this.respawnPlant();
     }
 
     void Update()

@@ -7,14 +7,14 @@ public class GameStatus : MonoBehaviour
     public static float GAIN_REPAIRMENT_PLANT = 0.10f;
 
     // 鉄鉱石、リンゴ、植物のそれぞれを選んだときに減るお腹具合
-    public static float CONSUME_SATIETY_IRON = 0.15f;
+    public static float CONSUME_SATIETY_IRON = 0.20f;
     public static float CONSUME_SATIETY_APPLE = 0.1f;
     public static float CONSUME_SATIETY_PLANT = 0.1f;
     public static float CONSUME_SATIETY_ALWAYS = 0.03f;
 
     // リンゴ、植物のそれぞれを食べたときに回復するお腹具合
     public static float REGAIN_SATIETY_APPLE = 0.7f;
-    public static float REGAIN_SATIETY_PLANT = 0.2f;
+    public static float REGAIN_SATIETY_PLANT = 0.3f;
 
     public float repairment = 0.0f; // 宇宙船の修理具合（0.0f～1.0f）
     public float satiety = 1.0f; // 満腹度（0.0f～1.0f）
